@@ -1,0 +1,674 @@
+Чтобы реализовать блокировку до 15 числа (в данном случае 15 июня 2026 года), мы обернем всё содержимое страницы в специальный экран ожидания.
+
+До наступления 00:00 15.06.2026 пользователь будет видеть только таймер обратного отсчета на красивом темном фоне с падающими сердечками. Как только время наступит, экран блокировки автоматически исчезнет, открывая доступ к поздравлению и фотографиям.
+
+Вот готовый код без лишних правок и подсказок:
+
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>С Днем Рождения, Солнышко!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #06030a;
+            --card-bg: #110b1c;
+            --accent-violet: #8a2be2;
+            --neon-glow: #bd00ff;
+            --text-color: #f1e9ff;
+            --heart-color: #ff75c3;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(138, 43, 226, 0.12) 0%, rgba(0,0,0,0) 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Экран блокировки */
+        #lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+            #lock-screen h2 {
+                font-family: 'Orbitron', sans-serif;
+                font-size: 2rem;
+                margin-bottom: 20px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                color: #fff;
+                text-shadow: 0 0 15px var(--neon-glow);
+            }
+
+        #countdown {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            color: #fff;
+            text-shadow: 0 0 10px #fff, 0 0 20px var(--neon-glow);
+            background: rgba(17, 11, 28, 0.6);
+            padding: 20px 40px;
+            border-radius: 30px;
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Главный контент (скрыт по умолчанию) */
+        .container {
+            display: none;
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+            z-index: 1;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #fff;
+            text-shadow: 0 0 15px var(--neon-glow), 0 0 35px var(--accent-violet);
+        }
+
+        h2 {
+            font-weight: 300;
+            font-size: 1.6rem;
+            margin-bottom: 50px;
+            color: #d1b3ff;
+        }
+
+        .photo-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            width: 100%;
+            margin-bottom: 60px;
+        }
+
+        .photo-card {
+            background: var(--card-bg);
+            border: 2px solid rgba(138, 43, 226, 0.3);
+            border-radius: 20px;
+            overflow: hidden;
+            aspect-ratio: 3/4;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+            .photo-card:hover {
+                transform: translateY(-12px);
+                border-color: var(--neon-glow);
+                box-shadow: 0 0 30px rgba(189, 0, 255, 0.5);
+            }
+
+            .photo-card img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .photo-card::after {
+                content: 'Нажми, чтобы открыть письмо';
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                color: #fff;
+                background: rgba(0, 0, 0, 0.8);
+                padding: 8px 15px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                opacity: 0;
+                transition: opacity 0.3s;
+                pointer-events: none;
+                white-space: nowrap;
+            }
+
+            .photo-card:hover::after {
+                opacity: 1;
+            }
+
+        .photo-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #7b5bb3;
+            font-size: 1rem;
+            padding: 30px;
+            background: linear-gradient(135deg, #140d24 0%, #090514 100%);
+        }
+
+        .love-btn {
+            background: transparent;
+            color: #fff;
+            border: 3px solid var(--accent-violet);
+            padding: 18px 50px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            z-index: 2;
+        }
+
+            .love-btn:hover {
+                background: var(--accent-violet);
+                box-shadow: 0 0 40px var(--neon-glow);
+                transform: scale(1.05);
+            }
+
+        .heart-viewport {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            height: 600px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        #relationship-timer {
+            position: absolute;
+            z-index: 10;
+            text-align: center;
+            pointer-events: none;
+            background: rgba(6, 3, 10, 0.6);
+            padding: 15px;
+            border-radius: 25px;
+            backdrop-filter: blur(4px);
+            transform: translateY(-25px);
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+            #relationship-timer.visible {
+                opacity: 1;
+            }
+
+            #relationship-timer h3 {
+                font-weight: 400;
+                color: #d1b3ff;
+                margin-bottom: 6px;
+                font-size: 0.85rem;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+            }
+
+        .timer-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: #fff;
+            text-shadow: 0 0 10px #fff, 0 0 20px var(--neon-glow);
+            white-space: nowrap;
+        }
+
+        .heart-word {
+            position: absolute;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--heart-color);
+            text-shadow: 0 0 8px var(--heart-color), 0 0 20px #ff0055;
+            white-space: nowrap;
+            opacity: 0;
+            transform-origin: center center;
+            transition: opacity 0.6s ease, text-shadow 0.6s ease, color 0.4s ease;
+        }
+
+            .heart-word.active {
+                opacity: 1;
+                color: #fff;
+                text-shadow: 0 0 15px #fff, 0 0 35px var(--heart-color), 0 0 50px #ff0055;
+                z-index: 5;
+            }
+
+            .heart-word.fade-high {
+                opacity: 0.75;
+                text-shadow: 0 0 12px var(--heart-color);
+            }
+
+            .heart-word.fade-medium {
+                opacity: 0.45;
+                text-shadow: 0 0 8px var(--heart-color);
+            }
+
+            .heart-word.fade-low {
+                opacity: 0.15;
+                text-shadow: 0 0 4px var(--heart-color);
+            }
+
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(6, 3, 10, 0.8);
+            backdrop-filter: blur(12px);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: #160f24;
+            margin: 15vh auto;
+            padding: 40px;
+            border: 2px solid var(--accent-violet);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 550px;
+            box-shadow: 0 0 40px rgba(138, 43, 226, 0.5);
+            position: relative;
+            animation: modalFadeIn 0.4s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+            .close-button:hover {
+                color: #fff;
+                text-shadow: 0 0 10px #fff;
+            }
+
+        .letter-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: var(--text-color);
+            text-align: left;
+        }
+
+        .letter-signature {
+            margin-top: 30px;
+            text-align: right;
+            font-style: italic;
+            color: #d1b3ff;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.3rem;
+            }
+
+            h2 {
+                font-size: 1.2rem;
+            }
+
+            #lock-screen h2 {
+                font-size: 1.4rem;
+            }
+
+            #countdown {
+                font-size: 1.5rem;
+                padding: 15px 25px;
+            }
+
+            .heart-viewport {
+                height: 480px;
+            }
+
+            .heart-word {
+                font-size: 9.5px;
+            }
+
+            .timer-display {
+                font-size: 1.2rem;
+            }
+
+            #relationship-timer {
+                padding: 8px;
+                transform: translateY(-20px);
+            }
+
+                #relationship-timer h3 {
+                    font-size: 0.7rem;
+                }
+
+            .photo-gallery {
+                grid-template-columns: 1fr;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="particle-canvas"></canvas>
+    <div class="bg-glow"></div>
+
+    <div id="lock-screen">
+        <h2>До твоего дня рождения осталось:</h2>
+        <div id="countdown">00д 00ч 00м 00с</div>
+    </div>
+
+    <div class="container" id="main-content">
+        <h1>С днём рождения, Солнышко моё!</h1>
+        <h2>Тебе исполнился 21 годик</h2>
+
+        <div class="photo-gallery">
+            <div class="photo-card" onclick="openLetter(1)">
+                <img src="https://i.ibb.co/bRW8L4h4/5278313673925533726.jpg" alt="Фото 1">
+            </div>
+            <div class="photo-card" onclick="openLetter(2)">
+                <img src="https://i.ibb.co/d40DkvLB/5278313673925533727.jpg" alt="Фото 2">
+            </div>
+            <div class="photo-card" onclick="openLetter(3)">
+                <img src="https://i.ibb.co/YF0MVVg7/5278313673925533728.jpg" alt="Фото 3">
+            </div>
+        </div>
+
+        <button class="love-btn" id="loveBtn">Люблю тебя</button>
+
+        <div class="heart-viewport" id="heartViewport">
+            <div id="relationship-timer">
+                <h3>Мы вместе уже:</h3>
+                <div class="timer-display" id="timer-display">00д 00ч 00м 00с</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="letterModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <div class="letter-text" id="modalText"></div>
+            <div class="letter-signature">С любовью, твой котек</div>
+        </div>
+    </div>
+
+    <script>
+        const loveBtn = document.getElementById('loveBtn');
+        const heartViewport = document.getElementById('heartViewport');
+        const timerContainer = document.getElementById('relationship-timer');
+
+        const totalWords = 40;
+        let wordsElements = [];
+        let currentIndex = 0;
+        let animationInterval = null;
+
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class HeartParticle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 8 + 5;
+                this.speedY = Math.random() * 1 + 0.5;
+                this.speedX = Math.sin(Math.random() * 2) * 0.3;
+                this.opacity = Math.random() * 0.4 + 0.1;
+            }
+
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                if (this.y > canvas.height) {
+                    this.y = -20;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = '#bd00ff';
+                ctx.beginPath();
+                ctx.translate(this.x, this.y);
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-this.size / 2, -this.size / 2, -this.size, this.size / 3, 0, this.size);
+                ctx.bezierCurveTo(this.size, this.size / 3, this.size / 2, -this.size / 2, 0, 0);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 50; i++) {
+                particles.push(new HeartParticle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+
+        // --- ПРОВЕРКА ДАТЫ И ТАЙМЕР БЛОКИРОВКИ ---
+        const targetDate = new Date(2026, 5, 15, 0, 0, 0); // 15 июня 2026, 00:00:00
+
+        function checkUnlockTime() {
+            const now = new Date();
+            const timeRemaining = targetDate - now;
+
+            if (timeRemaining <= 0) {
+                document.getElementById('lock-screen').style.display = 'none';
+                document.getElementById('main-content').style.display = 'flex';
+                clearInterval(lockInterval);
+            } else {
+                const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+                document.getElementById('countdown').textContent = `${days}д ${hours}ч ${minutes}м ${seconds}с`;
+            }
+        }
+        const lockInterval = setInterval(checkUnlockTime, 1000);
+        checkUnlockTime();
+
+
+        const startDate = new Date(2025, 5, 24, 16, 0, 0);
+
+        function updateRelationshipTimer() {
+            const now = new Date();
+            const difference = now - startDate;
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+            document.getElementById('timer-display').textContent = `${days}д ${hours}ч ${minutes}м ${seconds}с`;
+        }
+        setInterval(updateRelationshipTimer, 1000);
+        updateRelationshipTimer();
+
+
+        const letters = {
+            1: [
+                "Любимочка моя чудесная, с днём рождения тебя! ♥ ",
+                "Это первое письмо, и я хочу сказать тебе спасибо за то, что ты есть. С твоего появления моя жизнь полностью изменилась, наполнившись счастьем заботой и теплом.",
+                "Ты — самое прекрасное, что со мной случалось за всю мою жизнь, спасибо тебе большое. Люблю тебя, бесконечно сильня!"
+            ],
+            2: [
+                "Моя зайка, вот тебе и исполнился 21 годик пхпх",
+                "Я обожаю твою улыбку, твой смех и то, как ты умеешь делать каждый день особенным. Ты моя главная поддержка, мой смысл жизни и моя любовь всей жизни и до бесконечности.",
+                "Оставайся всегда такой же миленькой, красивенькой,умненькой,любименькой и самой самой лучшей(обожаю тибя дя)."
+            ],
+            3: [
+                "Пусть этот год принесет тебе исполнение всех твоих желаний(например йа)",
+                "Я хочу, чтобы ты всегда была счастлива, а я сделаю для этого всё, что в моих силах. Я всегда буду рядом для того чтобы помочь тебе так как смогу, ведь я правда очень очень сильно тебя люблю.",
+                "С праздником, моя принцесса! Бесканечна сильня люблю тебя, обожаю тебя и ценю!"
+            ]
+        };
+
+        const modal = document.getElementById('letterModal');
+        const modalText = document.getElementById('modalText');
+
+        function openLetter(letterId) {
+            modalText.innerHTML = '';
+            const paragraphs = letters[letterId];
+            paragraphs.forEach(text => {
+                const p = document.createElement('p');
+                p.textContent = text;
+                p.style.marginBottom = '15px';
+                modalText.appendChild(p);
+            });
+            modal.style.display = 'block';
+        }
+        function closeModal() { modal.style.display = 'none'; }
+        window.onclick = function (event) { if (event.target == modal) closeModal(); }
+
+        function getHeartCoordinate(index, total) {
+            const angle = -(index / total) * Math.PI * 2 + Math.PI / 2;
+            const scale = window.innerWidth < 768 ? 10.5 : 16;
+            const x = 16 * Math.pow(Math.sin(angle), 3);
+            const y = 13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle);
+            return { x: x * scale, y: -y * scale };
+        }
+
+        function createProportionalHeart() {
+            const oldWords = heartViewport.querySelectorAll('.heart-word');
+            oldWords.forEach(w => w.remove());
+            wordsElements = [];
+
+            for (let i = 0; i < totalWords; i++) {
+                const coords = getHeartCoordinate(i, totalWords);
+                const word = document.createElement('div');
+                word.className = 'heart-word';
+                word.textContent = 'I love you';
+
+                const nextCoords = getHeartCoordinate((i + 1) % totalWords, totalWords);
+                let angleDeg = Math.atan2(nextCoords.y - coords.y, nextCoords.x - coords.x) * 180 / Math.PI;
+                if (angleDeg > 90 || angleDeg < -90) { angleDeg += 180; }
+
+                word.style.left = `calc(50% + ${coords.x}px)`;
+                word.style.top = `calc(50% + ${coords.y}px)`;
+                word.style.transform = `translate(-50%, -50%) rotate(${angleDeg}deg)`;
+
+                heartViewport.appendChild(word);
+                wordsElements.push(word);
+            }
+        }
+
+        function startClockwiseAnimation() {
+            if (animationInterval) clearInterval(animationInterval);
+            timerContainer.classList.add('visible');
+
+            animationInterval = setInterval(() => {
+                wordsElements.forEach((el, index) => {
+                    const diff = (currentIndex - index + totalWords) % totalWords;
+                    if (diff === 0) { el.className = 'heart-word active'; }
+                    else if (diff > 0 && diff <= 5) { el.className = 'heart-word fade-high'; }
+                    else if (diff > 5 && diff <= 12) { el.className = 'heart-word fade-medium'; }
+                    else if (diff > 12 && diff <= 20) { el.className = 'heart-word fade-low'; }
+                    else { el.className = 'heart-word'; }
+                });
+                currentIndex = (currentIndex + 1) % totalWords;
+            }, 110);
+        }
+
+        loveBtn.addEventListener('click', () => {
+            createProportionalHeart();
+            startClockwiseAnimation();
+        });
+
+        window.addEventListener('resize', () => {
+            if (wordsElements.length > 0) { createProportionalHeart(); }
+        });
+    </script>
+</body>
+</html>
+
+```
